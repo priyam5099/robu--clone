@@ -9,10 +9,13 @@ const routes = require('./routes');
 
 const app = express();
 
+// CRUCIAL FOR DEPLOYMENT: Trust Render's reverse proxy headers
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 
-// Allow requests from anywhere (we can lock this down to just Vercel later)
+// Allow requests from anywhere
 app.use(cors({
     origin: '*',
     credentials: true
@@ -27,10 +30,12 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Rate Limiting (General API limit)
+// Rate Limiting (Configured safely for proxy environments)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, 
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api', limiter);
