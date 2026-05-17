@@ -17,7 +17,8 @@ export default function ContactPage() {
     setStatus('loading');
 
     try {
-      await axios.post('http://localhost:5000/api/products/contact', { name, email, message });
+      // Replace line 20 with this:
+await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products/contact`, { name, email, message });
       setStatus('success');
       setName(''); setEmail(''); setMessage('');
     } catch (err) {

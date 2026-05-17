@@ -34,7 +34,7 @@ export default function Chatbot() {
     setIsTyping(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/api/products/chat', { message: userMessage });
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products/chat`, { message: userMessage });
       setMessages(prev => [...prev, { text: res.data.reply, isBot: true }]);
     } catch (error) {
       setMessages(prev => [...prev, { text: "Sorry, I'm having trouble connecting to the server right now.", isBot: true }]);

@@ -44,7 +44,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/products');
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products`);
         setProducts(res.data.data); 
       } catch (err) {
         console.error(err);
@@ -82,7 +82,8 @@ export default function HomePage() {
     e.preventDefault();
     setContactStatus('loading');
     try {
-      await axios.post('http://localhost:5000/api/products/contact', contactForm);
+      // Replace line 85 with this:
+await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products/contact`, contactForm);
       setContactStatus('success');
       setContactForm({ name: '', email: '', message: '' });
       setTimeout(() => setContactStatus('idle'), 4000);
