@@ -2,24 +2,61 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import axios from 'axios'; // Added missing import
+import { Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  
+  // Toggle between Login view and Register view
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  // Form values state definitions (Fixes missing fields)
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(''); // Fixes missing setError bug
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Faking a network request for the UI
-    setTimeout(() => {
+    setError('');
+
+    try {
+      // Choose the right endpoint dynamically based on form state
+      const endpoint = isLogin ? '/api/users/login' : '/api/users/register';
+      const payload = isLogin ? { email, password } : { name, email, password };
+
+      const res = await axios.post(`https://robu-clone-backend.onrender.com${endpoint}`, payload);
+
+      console.log('Authentication Success:', res.data);
+
+      // Save authentication metadata securely
+      if (res.data && res.data.token) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('userInfo', JSON.stringify(res.data.user || res.data));
+      }
+
+      // Route users dynamically based on role tracking profiles
+      const userRole = res.data.user?.role || res.data.role;
+      if (userRole === 'ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/');
+      }
+
+    } catch (err: unknown) {
+      console.error('Authentication Error:', err);
+      
+      // Strict ESLint & TypeScript safe object property parsing
+      const errorObj = err as { response?: { data?: { message?: string } } };
+      const errorMessage = errorObj?.response?.data?.message || 'Invalid email or password.';
+      
+      setError(errorMessage);
+    } finally {
       setLoading(false);
-      // In a real app, you would save the auth token here.
-      // For now, we just push them to the shipping/checkout screen!
-      router.push('/checkout');
-    }, 1500);
+    }
   };
 
   return (
@@ -35,7 +72,10 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button 
-              onClick={() => setIsLogin(!isLogin)} 
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }} 
               className="font-bold text-[#e31837] hover:text-red-700 transition-colors"
               type="button"
             >
@@ -43,6 +83,14 @@ export default function LoginPage() {
             </button>
           </p>
         </div>
+
+        {/* Display Error Message Alert Panel */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-4 rounded-md flex items-start gap-3">
+            <AlertCircle className="text-red-500 mt-0.5" size={18} />
+            <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* The Form */}
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
@@ -58,6 +106,8 @@ export default function LoginPage() {
                 <input 
                   type="text" 
                   required 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#e31837]/20 focus:border-[#e31837] dark:focus:border-[#e31837] bg-white dark:bg-neutral-950 dark:text-white outline-none transition-all" 
                   placeholder="John Doe" 
                 />
@@ -74,6 +124,8 @@ export default function LoginPage() {
               <input 
                 type="email" 
                 required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#e31837]/20 focus:border-[#e31837] dark:focus:border-[#e31837] bg-white dark:bg-neutral-950 dark:text-white outline-none transition-all" 
                 placeholder="you@example.com" 
               />
@@ -89,6 +141,8 @@ export default function LoginPage() {
               <input 
                 type="password" 
                 required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-3 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#e31837]/20 focus:border-[#e31837] dark:focus:border-[#e31837] bg-white dark:bg-neutral-950 dark:text-white outline-none transition-all" 
                 placeholder="••••••••" 
               />

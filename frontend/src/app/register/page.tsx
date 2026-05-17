@@ -21,25 +21,22 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      // Replace line 24 with this:
-const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/register`,  {
-        name,
-        email,
-        password,
-      });
+  const res = await axios.post('https://robu-clone-backend.onrender.com/api/users/register', {
+    name,
+    email,
+    password,
+  });
 
-      console.log('Registration Success:', res.data);
-      router.push('/login?registered=true');
-      
-    } catch (err) {
-      console.error('Registration Error:', err);
-      
-      // Our beautiful, ESLint-approved Type Guard
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Something went wrong during registration.');
-      } else {
-        setError('An unexpected error occurred.');
-      }
+  console.log('Registration Success:', res.data);
+  
+  // ONLY REDIRECT ON SUCCESS! 
+  // Send them to login so they can authenticate cleanly
+  router.push('/login?registered=true'); 
+
+} catch (err) {
+  console.error('Registration Error:', err);
+  setError('Failed to create account.');
+}
     } finally {
       setLoading(false);
     }
