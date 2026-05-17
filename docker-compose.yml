@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: robu_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: robu_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: robu_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: robu_meilisearch
+    environment:
+      - MEILI_MASTER_KEY=meili_master_key_123
+      - MEILI_ENV=development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+volumes:
+  postgres_data:
+  redis_data:
+  meili_data:

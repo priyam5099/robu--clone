@@ -1,0 +1,478 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGO_URI")
+}
+
+// ─── USERS & AUTH ────────────────────────────────
+
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  email         String         @unique
+  phone         String?        @unique
+  passwordHash  String?
+  googleId      String?        @unique
+  role          Role           @default(CUSTOMER)
+  avatar        String?
+  isVerified    Boolean        @default(false)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  cart          CartItem[]
+  wishlist      WishlistItem[]
+  reviews       Review[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  vendor        Vendor?
+}
+
+enum Role {
+  CUSTOMER
+  VENDOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model OTP {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  target    String     // email or phone
+  code      String
+  purpose   OTPPurpose
+  expiresAt DateTime
+  used      Boolean    @default(false)
+  createdAt DateTime   @default(now())
+}
+
+enum OTPPurpose {
+  EMAIL_VERIFY
+  PHONE_VERIFY
+  PASSWORD_RESET
+  LOGIN
+}
+
+// ─── ADDRESS ─────────────────────────────────────
+
+model Address {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String   // Home, Work, Other
+  name      String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  country   String   @default("India")
+  isDefault Boolean  @default(false)
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+// ─── CATEGORIES ──────────────────────────────────
+
+model Category {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?    @db.ObjectId
+  parent      Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children    Category[] @relation("CategoryChildren")
+  products    Product[]
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+}
+
+// ─── BRANDS ──────────────────────────────────────
+
+model Brand {
+  id       String    @id @default(auto()) @map("_id") @db.ObjectId
+  name     String    @unique
+  slug     String    @unique
+  logo     String?
+  products Product[]
+}
+
+// ─── PRODUCTS ────────────────────────────────────
+
+model Product {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String            @unique
+  description     String            // Rich HTML content
+  shortDesc       String?
+  sku             String            @unique
+  categoryId      String            @db.ObjectId
+  category        Category          @relation(fields: [categoryId], references: [id])
+  brandId         String?           @db.ObjectId
+  brand           Brand?            @relation(fields: [brandId], references: [id])
+  vendorId        String?           @db.ObjectId
+  vendor          Vendor?           @relation(fields: [vendorId], references: [id])
+  
+  // Pricing (Converted from SQL Decimal to MongoDB Float)
+  basePrice       Float
+  salePrice       Float?
+  costPrice       Float?
+  gstPercent      Float             @default(18)
+  
+  // Inventory
+  stock           Int               @default(0)
+  minOrderQty     Int               @default(1)
+  maxOrderQty     Int?
+  lowStockAlert   Int               @default(5)
+  
+  // Physical
+  weightGrams     Int?
+  lengthCm        Float?
+  widthCm         Float?
+  heightCm        Float?
+  
+  // Status
+  isActive        Boolean           @default(true)
+  isFeatured      Boolean           @default(false)
+  isDigital       Boolean           @default(false)
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  // Stats
+  viewCount       Int               @default(0)
+  soldCount       Int               @default(0)
+  avgRating       Float             @default(0)
+  reviewCount     Int               @default(0)
+  
+  images          ProductImage[]
+  attributes      ProductAttribute[]
+  variants        ProductVariant[]
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  tags            ProductTag[]
+  relatedProducts ProductRelation[] @relation("ProductRelations")
+  relatedTo       ProductRelation[] @relation("RelatedTo")
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([isActive, isFeatured])
+}
+
+model ProductImage {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+}
+
+model ProductAttribute {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String   // "Voltage", "Interface"
+  value     String   // "5V", "I2C/SPI"
+  unit      String?  // "V", "MHz"
+}
+
+model ProductVariant {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  sku       String   @unique
+  price     Float
+  stock     Int      @default(0)
+  attributes Json
+}
+
+model ProductTag {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       String
+
+  @@index([tag])
+}
+
+model ProductRelation {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  productId String       @db.ObjectId
+  product   Product      @relation("ProductRelations", fields: [productId], references: [id])
+  relatedId String       @db.ObjectId
+  related   Product      @relation("RelatedTo", fields: [relatedId], references: [id])
+  type      RelationType @default(RELATED)
+
+  @@unique([productId, relatedId])
+}
+
+enum RelationType {
+  RELATED
+  UPSELL
+  CROSS_SELL
+  FREQUENTLY_BOUGHT
+}
+
+// ─── CART ────────────────────────────────────────
+
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  sessionId String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id])
+  variantId String?  @db.ObjectId
+  quantity  Int      @default(1)
+  addedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+// ─── WISHLIST ─────────────────────────────────────
+
+model WishlistItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id])
+  addedAt   DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// ─── COUPONS ─────────────────────────────────────
+
+model Coupon {
+  id                   String     @id @default(auto()) @map("_id") @db.ObjectId
+  code                 String     @unique
+  type                 CouponType
+  value                Float
+  minOrderValue        Float?
+  maxDiscount          Float?
+  usageLimit           Int?
+  usageCount           Int        @default(0)
+  perUserLimit         Int        @default(1)
+  validFrom            DateTime
+  validTo              DateTime
+  isActive             Boolean    @default(true)
+  applicableCategories String[]   @db.ObjectId
+  orders               Order[]
+  createdAt            DateTime   @default(now())
+}
+
+enum CouponType {
+  PERCENTAGE
+  FLAT
+  FREE_SHIPPING
+}
+
+// ─── ORDERS ──────────────────────────────────────
+
+model Order {
+  id             String             @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber    String             @unique
+  userId         String             @db.ObjectId
+  user           User               @relation(fields: [userId], references: [id])
+  addressId      String             @db.ObjectId
+  address        Address            @relation(fields: [addressId], references: [id])
+  couponId       String?            @db.ObjectId
+  coupon         Coupon?            @relation(fields: [couponId], references: [id])
+  
+  subtotal       Float
+  discountAmount Float              @default(0)
+  gstAmount      Float
+  shippingCharge Float              @default(0)
+  total          Float
+  
+  status         OrderStatus        @default(PENDING)
+  paymentStatus  PaymentStatus      @default(PENDING)
+  paymentMethod  String?
+  
+  shipmentId     String?
+  trackingId     String?
+  awbCode        String?
+  courierName    String?
+  
+  notes          String?
+  items          OrderItem[]
+  payment        Payment?
+  statusHistory  OrderStatusHistory[]
+  
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPPED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model OrderItem {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId    String   @db.ObjectId
+  order      Order    @relation(fields: [orderId], references: [id])
+  productId  String   @db.ObjectId
+  product    Product  @relation(fields: [productId], references: [id])
+  variantId  String?  @db.ObjectId
+  name       String
+  sku        String
+  imageUrl   String?
+  quantity   Int
+  unitPrice  Float
+  gstPercent Float
+  totalPrice Float
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String      @db.ObjectId
+  order     Order       @relation(fields: [orderId], references: [id])
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+}
+
+// ─── PAYMENTS ────────────────────────────────────
+
+model Payment {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId           String        @unique @db.ObjectId
+  order             Order         @relation(fields: [orderId], references: [id])
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  amount            Float
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  method            String?
+  gatewayResponse   Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+// ─── REVIEWS ─────────────────────────────────────
+
+model Review {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  productId    String   @db.ObjectId
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id])
+  rating       Int
+  title        String?
+  body         String?
+  images       String[]
+  isVerified   Boolean  @default(false)
+  isApproved   Boolean  @default(false)
+  helpfulCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId, isApproved])
+}
+
+// ─── BLOG ─────────────────────────────────────────
+
+model BlogPost {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  title        String
+  slug         String   @unique
+  excerpt      String?
+  content      String
+  coverImage   String?
+  authorId     String   @db.ObjectId
+  tags         String[]
+  isPublished  Boolean  @default(false)
+  publishedAt  DateTime?
+  viewCount    Int      @default(0)
+  readTimeMins Int      @default(5)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── VENDOR ──────────────────────────────────────
+
+model Vendor {
+  id           String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String       @unique @db.ObjectId
+  user         User         @relation(fields: [userId], references: [id])
+  businessName String
+  gstNumber    String?
+  panNumber    String?
+  bankAccount  Json?
+  status       VendorStatus @default(PENDING)
+  commission   Float        @default(10)
+  products     Product[]
+  createdAt    DateTime     @default(now())
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  type      String
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+}
