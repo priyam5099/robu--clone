@@ -22,7 +22,7 @@ export default function RegisterPage() {
 
     try {
       // Replace line 24 with this:
-const res = await axios.post('https://robu-clone-backend.onrender.com/api/users/register', {
+const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/register`,  {
         name,
         email,
         password,

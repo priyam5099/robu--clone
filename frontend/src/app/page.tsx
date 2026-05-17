@@ -83,7 +83,7 @@ export default function HomePage() {
     setContactStatus('loading');
     try {
       // Replace line 85 with this:
-await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products/contact`, contactForm);
+const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/products`);
       setContactStatus('success');
       setContactForm({ name: '', email: '', message: '' });
       setTimeout(() => setContactStatus('idle'), 4000);

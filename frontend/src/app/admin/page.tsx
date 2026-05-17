@@ -38,7 +38,7 @@ export default function AdminDashboard() {
       // Dynamic fallback URL checking your environment parameters
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       
-      await axios.post(`${baseURL}/products`,
+      await axios.post(`${baseURL}/api/products`,
         { name, price: Number(price), category: finalCategory, description, imageUrl },
         { headers: { Authorization: `Bearer ${userInfo.token}` } }
       );
