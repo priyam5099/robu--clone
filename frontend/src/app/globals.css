@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* This is the Tailwind v4 magic line that enables our manual button! */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ... rest of your CSS stays the same ... */
